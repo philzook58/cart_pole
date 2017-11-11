@@ -1,0 +1,12 @@
+(dp0
+S'right'
+p1
+(I548
+I350
+tp2
+sS'left'
+p3
+(I187
+I348
+tp4
+s.
