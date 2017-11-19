@@ -141,7 +141,7 @@ while True:
 	t = t/l
 	b = b/l
 
-	#print(l,r,t,b)
+	print(l,r,t,b)
 
 	# find cart position and velocity
 	x = b[0]
@@ -154,7 +154,7 @@ while True:
 	dtheta = theta-old_theta
 	old_theta = theta
 
-	#print(x,theta)
+	print(x,theta)
 
 
 	diff = theta - np.pi/2
@@ -164,16 +164,19 @@ while True:
 		itheta = max(-np.pi/4, itheta)
 		itheta = min(np.pi/4, itheta)
 
-	kp = 300
-	kd = 300
-	ki = 0
+	kp = 1000
+	kd = 0
+	ki = 300
 	if 0.2 < x < 0.8: 
 		print(-(kp * diff) - (kd * dtheta) - (ki * itheta))
 		cart.move(-(kp * diff) - (kd * dtheta) - (ki * itheta), 300)
+	else:
+		cart.move(0, 100)
 
 	key = cv2.waitKey(1)
 	if key & 0xFF == 32:
 		print("toggle enable")
+		cart.move(0, 100)
 		itheta = 0
 		cart.toggleEnable()
 	elif key & 0xFF == ord('q'):
