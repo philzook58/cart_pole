@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import pickle
-from cartcommand import CartCommand
+from cart_command import CartCommand
 from image_analyzer import ImageAnalyzer
 from time import time
 import Queue
@@ -28,8 +28,13 @@ cv2.setTrackbarPos('P', 'PID', 0)
 #cv2.createTrackbar('I','PID',0,1000,nothing)
 #cv2.setTrackbarPos('I', 'PID', 0)
 
-cv2.createTrackbar('D','PID',0,2000,nothing)
+cv2.createTrackbar('D','PID',0,20000,nothing)
 cv2.setTrackbarPos('D', 'PID', 1000)
+
+cv2.createTrackbar('lat','PID',0,20,nothing)
+cv2.setTrackbarPos('lat', 'PID', 0)
+
+
 
 
 
@@ -51,12 +56,13 @@ while True:
 	kp = 300
 	kd = 0
 	ki = 0
-
+	lat = cv2.getTrackbarPos('lat','PID')
+	diffPredicted = diff + lat * dtheta
 	kp = cv2.getTrackbarPos('P','PID')
 	#ki = cv2.getTrackbarPos('I','PID')
 	kd = cv2.getTrackbarPos('D','PID') - 1000
 
-	command = -(kp * diff) - (kd * dtheta) - (ki * itheta)
+	command = -(kp * diffPredicted) - (kd * dtheta) - (ki * itheta)
 	print command
 
 	if 0.2 < x < 0.8: 

@@ -8,10 +8,10 @@ class ImageAnalyzer():
 		self.left = self.right = None
 		self.old_x = self.old_theta = 0
 
-		calib = pickle.load(open("calib.p","r"))
+		calib = pickle.load(open("calib.p",'rb'))
 		settings = {'h_top':0, 'h_bot':0}
 		try:
-			settings = pickle.load(open("settings.p","r"))
+			settings = pickle.load(open("settings.p","rb"))
 		except IOError:
 			print("Nonsettings file found")
 			pass
@@ -37,7 +37,7 @@ class ImageAnalyzer():
 		cv2.createTrackbar('bot','controls',0,180,nothing)
 		cv2.setTrackbarPos('bot', 'controls', settings["h_bot"])
 
-		self.cap = cv2.VideoCapture(1)
+		self.cap = cv2.VideoCapture(0)
 
 		for i in range(100):
 			ret, frame = self.cap.read()
