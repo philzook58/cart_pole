@@ -76,7 +76,7 @@ while(1):
     N, xavg, yavg, mask = getAveragePosColor(frame,globalcolor)
     cv2.imshow('frame',cv2.pyrDown(frame))
     cv2.imshow('mask', cv2.pyrDown(mask))
-    cv2.circle(frame,(int(xavg),int(yavg)),20,(255,0,0),10)
+
     k = cv2.waitKey(100) & 0xFF
     if k == 27:
         break
