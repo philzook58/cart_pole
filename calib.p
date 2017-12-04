@@ -1,12 +1,12 @@
 (dp0
 S'right'
 p1
-(I521
-I386
+(I434
+I257
 tp2
 sS'left'
 p3
-(I175
-I378
+(I172
+I261
 tp4
 s.

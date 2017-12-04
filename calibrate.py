@@ -23,7 +23,9 @@ def calibRight(event, x, y, flags, param):
         drawCircle(frame, x, y)
         cv2.destroyAllWindows()
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(3)
+#cap.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 240)
+#cap.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 320)
 
 ret, frame = cap.read()
 cv2.imshow("calibrate", frame)

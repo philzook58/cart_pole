@@ -15,4 +15,4 @@ for _ in range(1000):
     	action = 1
 
     (x, dx, t, dt), reward, done, info = env.step(action)
-    print(t)
+    print(x)

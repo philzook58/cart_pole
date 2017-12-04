@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import pickle
-from cart_command import CartCommand
+from sabretooth_command import CartCommand
 from image_analyzer import ImageAnalyzer
 from time import time
 import matplotlib.pyplot as plt

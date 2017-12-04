@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import pickle
+from time import time
 
 class ImageAnalyzer():
 	def __init__(self):
@@ -38,8 +39,10 @@ class ImageAnalyzer():
 		cv2.setTrackbarPos('bot', 'controls', settings["h_bot"])
 
 		self.cap = cv2.VideoCapture(3)
-		self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 240)
-		self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 320)
+		#self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 480)
+		#self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 640)
+		self.cap.set(cv2.cv.CV_CAP_PROP_FPS, 125)
+		#self.cap.set(cv2.cv.CV_CAP_PROP_BUFFERSIZE, 20)
 
 
 	def getBGRFromH(self, H):
@@ -54,7 +57,7 @@ class ImageAnalyzer():
 		# Threshold the HSV image to get only blue colors
 		hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 		mask = cv2.inRange(hsv, lower, upper)
-		erodenum = 2
+		erodenum = 1
 		mask = cv2.erode(mask, None, iterations=erodenum)
 		mask = cv2.dilate(mask, None, iterations=erodenum)
 
@@ -75,7 +78,10 @@ class ImageAnalyzer():
 			c = max(cnts, key=cv2.contourArea)
 			((x, y), radius) = cv2.minEnclosingCircle(c)
 			M = cv2.moments(c)
-			center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+			try:
+				center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+			except:
+				return None, None
 			return center
 		else:
 			return None, None #(0,0) #defaults
@@ -86,6 +92,7 @@ class ImageAnalyzer():
 		pickle.dump({"h_top":h_top,"h_bot":h_bot}, open("settings.p","w"))
 
 	def analyzeFrame(self):
+		start = time()
 		ret, frame = self.cap.read()
 
 		h_top = cv2.getTrackbarPos('top','controls')
@@ -150,7 +157,7 @@ class ImageAnalyzer():
 		theta = np.arctan2(pole[1],pole[0])
 		dtheta = theta-self.old_theta
 		self.old_theta = theta
-
+		print("framerate %f fps"%(1./(time()-start)))
 		return x, dx, theta, dtheta
 
 def nothing(a):

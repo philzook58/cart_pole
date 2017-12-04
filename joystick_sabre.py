@@ -3,7 +3,7 @@ import sys
 import time
 import socket
 import cPickle as pickle
-from cart_command import CartCommand
+from sabretooth_command import CartCommand
 
 pygame.init()
 
@@ -28,7 +28,7 @@ while 1:
 	if abs(xdir) < 0.2:
 		xdir = 0.0
 	print(xdir * 100)
-	cart.setSpeed(xdir * 10)
+	cart.setSpeed(xdir * 2046)
 	#MESSAGE = pickle.dumps([xdir,rtrigger,ltrigger])
 	#sock.sendto(MESSAGE, (UDP_IP, UDP_PORT))
 

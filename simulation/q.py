@@ -70,6 +70,9 @@ class DQNCartPoleSolver():
                 action = self.choose_action(state, self.get_epsilon(e))
                 next_state, reward, done, _ = self.env.step(action)
                 next_state = self.preprocess_state(next_state)
+                x = next_state[0][0]
+                if not -3 < x < 3:
+                    reward += -10 * np.abs(x)
                 self.remember(state, action, reward, next_state, done)
                 state = next_state
                 i += 1
@@ -78,6 +81,7 @@ class DQNCartPoleSolver():
             mean_score = np.mean(scores)
             if mean_score >= self.n_win_ticks and e >= 100:
                 if not self.quiet: print('Ran {} episodes. Solved after {} trials'.format(e, e - 100))
+                self.demo(100)
                 return e - 100
             if e % 100 == 0 and not self.quiet:
                 print('[Episode {}] - Mean survival time over last 100 episodes was {} ticks.'.format(e, mean_score))
@@ -86,17 +90,19 @@ class DQNCartPoleSolver():
         
         if not self.quiet: print('Did not solve after {} episodes'.format(e))
 
-        state = self.preprocess_state(self.env.reset())
-
-        for _ in range(1000):
-            self.env.render()
-            
-            state, reward, done, info = self.env.step(np.argmax(self.model.predict(state)))
-            state = self.preprocess_state(state)
-
+        self.demo(100)
 
         return e
 
+    def demo(selfm n):
+        state = self.preprocess_state(self.env.reset())
+        for _ in range(n):
+            self.env.render()
+            
+            state, reward, done, info = self.env.step(np.argmax(self.model.predict(state)))
+            print(state, reward)
+            state = self.preprocess_state(state)
+
 if __name__ == '__main__':
-    agent = DQNCartPoleSolver(n_episodes=100)
+    agent = DQNCartPoleSolver(n_episodes=2000)
     agent.run()

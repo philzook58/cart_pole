@@ -18,7 +18,7 @@ for _ in range(1000):
     (x, dx, t, dt) = q.get()
 
     action = None
-    if dt + 5*t < 0:
+    if dt + 5*t < 0:h
     	action = 0
     else:
     	action = 1

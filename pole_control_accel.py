@@ -67,7 +67,7 @@ while True:
 
 	if 0.2 < x < 0.8: 
 		#print(-(kp * diff) - (kd * dtheta) - (ki * itheta))
-		cart.move(command, 300)
+		 
 
 
 	key = cv2.waitKey(1)
