@@ -43,18 +43,19 @@ left_data['states'] = normalize(left_data['states'] , avg, var)
 def relabel(data, gamma=1.0 - 1.0/20 ):
 	global left_model, right_model
 	next_states = data["next_states"]
-	rewards= next_states[:,4].reshape((-1,1)) #ypole hieght
+	rewards_pole= next_states[:,4].reshape((-1,1)) #ypole hieght
+	rewards_cart= next_states[:,0].reshape((-1,1)) - 0.5 #ypole hieght
 	maxQs = np.maximum(left_model.predict(next_states), right_model.predict(next_states))
 	#print(maxQs.shape)
 	#print(rewards.shape)
-	labels = rewards + gamma*maxQs
+	labels = rewards_pole +  + gamma*maxQs
 	return labels
 
 def makeModel():
 	model = Sequential([
-	Dense(32, input_shape=(11,)),
+	Dense(5, input_shape=(11,)),
 	Activation('relu'),
-	Dense(20),
+	Dense(5),
 	Activation('relu'),
 	Dense(1)
 	])
@@ -66,16 +67,17 @@ def makeModel():
 left_model = makeModel()
 right_model = makeModel()
 
-for lookahead in range(20,100):
-	for i in range(2):
-		print("lookahead: ",lookahead)
-		gamma = 1.0 - 1.0 / lookahead
-		leftQ = relabel(left_data, gamma = gamma)# * (1-gamma)
-		rightQ = relabel(right_data, gamma = gamma)# * (1-gamma)
-		#print(leftQ)
-		#print(left_data['states'])
-		left_model.fit(left_data['states'], leftQ, epochs=3)
-		right_model.fit(right_data['states'], rightQ, epochs=3)
+#for lookahead in range(20,100):
+lookahead = 100
+for i in range(1000):
+	print("lookahead: ",lookahead)
+	gamma = 1.0 - 1.0 / lookahead
+	leftQ = relabel(left_data, gamma = gamma)# * (1-gamma)
+	rightQ = relabel(right_data, gamma = gamma)# * (1-gamma)
+	#print(leftQ)
+	#print(left_data['states'])
+	left_model.fit(left_data['states'], leftQ, epochs=1)
+	right_model.fit(right_data['states'], rightQ, epochs=1)
 
 pickle.dump({"avg":avg, "var":var}, open(sys.argv[1][:-2] + ".norm","w"))
 left_model.save(sys.argv[1][:-2] + ".left")

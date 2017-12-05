@@ -91,9 +91,9 @@ while True:
 
 	print("x%f"%x)
 
-	if x < 0.2:
+	if x < 0.35:
 		command = min(command,0)
-	if x > 0.8:
+	if x > 0.65:
 		command = max(command, 0)
 
 	cart.setSpeed(command)
