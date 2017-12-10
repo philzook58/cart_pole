@@ -4,6 +4,7 @@ from keras import optimizers
 import numpy as np
 import pickle
 import sys
+import matplotlib.pyplot as plt
 
 import cv2
 from sabretooth_command import CartCommand
@@ -28,23 +29,22 @@ def reset_data():
 
 def makeModel():
 	model = Sequential([
-	Dense(5, input_shape=(11,)),
+	Dense(26, input_shape=(11,)),
 	Activation('relu'),
-	Dense(5),
+	Dense(26),
 	Activation('relu'),
-	Dense(1)
+	Dense(2)
 	])
 
-	sgd = optimizers.SGD(lr=1e-5, decay=1e-6, momentum=0.9, nesterov=True)
+	sgd = optimizers.SGD(lr=1e-8, decay=1e-6, momentum=0.9, nesterov=True)
 	model.compile(loss="mean_squared_error", optimizer=sgd)
 	return model
 
-left_model = makeModel()
-right_model = makeModel()
+model = makeModel()
 
-states = []
-next_states = []
-actions = []
+states = np.array([])
+next_states = np.array([])
+actions = np.array([])
 command_queue = Queue.Queue()
 
 
@@ -54,26 +54,13 @@ var = np.array([0.5, 1./50., 2., 1./50., 2.0, 1./50., 2048., 2048., 2048., 2048.
 
 def learn(n):
 
-	left_states = np.array([states[i] for i in range(len(states)) if actions[i] == -1])
-	left_next_states =  np.array([next_states[i] for i in range(len(states)) if actions[i] == -1])
-
-	right_states = np.array([states[i] for i in range(len(states)) if actions[i] == 1])
-	right_next_states =  np.array([next_states[i] for i in range(len(states)) if actions[i] == 1])
-
-	#left_states = normalize(left_states)	
-	#left_next_states = normalize(left_next_states)
-	#right_states = normalize(right_states)
-	#right_next_states = normalize(right_next_states)
-
-	lookahead = 300
+	lookahead = 100
 
 	for i in range(n):
 		gamma = 1.0 - 1.0 / lookahead
-		leftQ = relabel(left_next_states, gamma = gamma)# * (1-gamma)
-		rightQ = relabel(right_next_states, gamma = gamma)# * (1-gamma)
+		labels = relabel(np.array(actions), np.array(states), np.array(next_states), gamma = gamma)# * (1-gamma)
 
-		left_model.fit(left_states, leftQ, epochs=1)
-		right_model.fit(right_states, rightQ, epochs=1)
+		model.fit(np.array(states), labels, epochs=1)
 '''
 def calc_norms(data):
 	#print(data.shape)
@@ -88,29 +75,24 @@ def normalize(data):
 	global avg, var
 	return (data - avg)/var
 
+def getReward(states):
+	rewards_pole = (states[:,4].reshape((-1,1)) + 0.5)**2 #ypole hieght	
+	rewards_cart = 0.1 * np.power(states[:,0].reshape((-1,1)),2) #xcart pos
+	return rewards_cart + rewards_pole
 
-def relabel(next_states, gamma=1.0 - 1.0/20 ):
+
+def relabel(actions, states, next_states, gamma=1.0 - 1.0/20 ):
 	global left_model, right_model
-	rewards_pole = (next_states[:,4].reshape((-1,1)) + 0.5)**2 #ypole hieght	
-	rewards_cart = 0.1 * np.power(next_states[:,0].reshape((-1,1)),2) #xcart pos
-	maxQs = np.maximum(left_model.predict(next_states), right_model.predict(next_states))
-	#print(maxQs.shape)
-	#print(rewards.shape)
-	labels = rewards_pole + (gamma*maxQs) - rewards_cart
-	return labels
 
-def makeModel():
-	model = Sequential([
-	Dense(10, input_shape=(11,)),
-	Activation('relu'),
-	Dense(10),
-	Activation('relu'),
-	Dense(1)
-	])
+	rewards = getReward(next_states)
 
-	sgd = optimizers.SGD(lr=1e-5, decay=1e-6, momentum=0.9, nesterov=True)
-	model.compile(loss="mean_squared_error", optimizer=sgd)
-	return model
+	qs = model.predict(states)
+	next_qs = model.predict(next_states)
+	action_indices = ((actions + 1)/2).astype(int)
+
+	qs[:,action_indices] = rewards + gamma * np.max(next_qs, axis=1)
+
+	return qs
 
 #####################
 # testing functions #
@@ -122,7 +104,6 @@ cart = CartCommand(port="/dev/ttyACM0")
 
 def test(n, random_action=False, eps=1.0):
 	global states, actions, next_states, command_queue
-	resetCart()
 
 	command_queue = Queue.Queue()
 	cart.toggleEnable()
@@ -146,15 +127,15 @@ def test(n, random_action=False, eps=1.0):
 		x, xpole, ypole = getData()
 		state = normalize(np.array([x, x-old_x, xpole, xpole-old_xpole, ypole, ypole-old_ypole] + list(command_queue.queue)))
 
+
 		if np.random.rand() < eps or random_action:
 			action = (2*np.random.randint(2) - 1)
 		else:
-			q_left = left_model.predict(state.reshape((1,-1)))
-			q_right = right_model.predict(state.reshape((1,-1)))
+			q = model.predict(state.reshape((1,-1)))
 
-			print q_left,q_right
+			print q
 			action = 0
-			if q_left > q_right:
+			if q[0][0] > q[0][1]:
 				action = -1
 			else:
 				action = 1
@@ -190,15 +171,24 @@ def test(n, random_action=False, eps=1.0):
 			print("reset")
 			reset()
 
-	current_next_states = current_states[1:]
-	current_states = current_states[0:-1]	
-	current_actions = current_actions[0:-1]
+	current_next_states = np.array(current_states[1:])
+	current_states = np.array(current_states[0:-1])
+	current_actions = np.array(current_actions[0:-1])
 
-	states += current_states
-	actions += current_actions
-	next_states += current_next_states
+	states = states[np.random.rand(np.shape(states)[0])<0.8]
+	states = np.append(states, np.array(current_states))
+
+	actions = actions[np.random.rand(np.shape(actions)[0])<0.8]
+	actions = np.append(actions, np.array(current_actions))
+
+
+	next_states = next_states[np.random.rand(np.shape(next_states)[0])<0.8]
+	next_states = np.append(next_states, np.array(current_next_states))
+
+	resetCart()
 	cart.setSpeed(0)
-
+	print np.shape(current_next_states)
+	return np.sum(getReward(current_next_states))
 
 
 def resetCart():	
@@ -224,7 +214,14 @@ def getData():
 	return x, xpole, ypole
 
 
-test(500, random_action=True)
+fig = plt.figure("reward")
+plt.ion()
+plt.show()
+test_rewards = []
+test_rewards.append(test(100, random_action=True))
 for i in range(100):
-	learn(20)
-	test(500, eps= 1.0/(i+1))
+	learn(30)
+	test_rewards.append(test(300, eps= 0.2 + 2.0/(i+1)))
+	fig.clear()
+	plt.plot(test_rewards)
+	plt.pause(.0001)

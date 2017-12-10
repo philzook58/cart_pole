@@ -38,7 +38,7 @@ class ImageAnalyzer():
 		cv2.createTrackbar('bot','controls',0,180,nothing)
 		cv2.setTrackbarPos('bot', 'controls', settings["h_bot"])
 
-		self.cap = cv2.VideoCapture(3)
+		self.cap = cv2.VideoCapture(1)
 		#self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 480)
 		#self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 640)
 		self.cap.set(cv2.cv.CV_CAP_PROP_FPS, 125)

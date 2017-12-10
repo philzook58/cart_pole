@@ -11,7 +11,7 @@ data = []
 
 analyzer = ImageAnalyzer()
 
-cart = CartCommand()
+cart = CartCommand("/dev/ttyACM0")
 
 commandqueue = Queue.Queue()
 
