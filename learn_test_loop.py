@@ -1,6 +1,8 @@
 from keras.models import Sequential
 from keras.layers import Dense, Activation
-from keras import optimizers
+from keras import optimizers, regularizers
+from keras import backend as K
+
 import numpy as np
 import pickle
 import sys
@@ -13,43 +15,51 @@ from time import time, sleep
 import Queue
 from keras.models import load_model
 
-
-def reset_data():
-	global states, next_states, command_queue, actions
-	states = []
-	next_states = []
-	actions = []
-	command_queue = Queue.Queue()
-
-
 class Memory:
-	def __init__(self,state_size):
+	def __init__(self):
 		self.states = None
 		self.actions = None
 		self.next_states = None
-	def add(new_states, new_actions, new_next_states):
+		self.newest_states = None
+		self.newest_actions = None
+		self.newest_next_states = None
+	def add(self, new_states, new_actions, new_next_states):
+		self.newest_states = np.array(new_states)
 		if self.states is None:
 			self.states = np.array(new_states)
 		else:
-			self.states = np.concatenate(self.states, np.array(new_states))
+			self.states = np.concatenate((self.states, np.array(new_states)), axis=0)
 
+		self.newest_actions = np.array(new_actions)
 		if self.actions is None:
 			self.actions = np.array(new_actions)
 		else:
-			self.actions = np.concatenate(self.actions, np.array(new_actions))
+			self.actions = np.concatenate((self.actions, np.array(new_actions)), axis=0)
 
+		self.newest_next_states = np.array(new_next_states)
 		if self.next_states is None:
 			self.next_states = np.array(new_next_states)
 		else:
-			self.next_states = np.concatenate(self.next_states, np.array(new_next_states))
-	def __repr__:
-		return "states: %s\nactions: %s\nnext_states: %s"%(str(self.states),str(self.actions),str(self.next_states))
+			self.next_states = np.concatenate((self.next_states, np.array(new_next_states)), axis=0)
+	def __repr__(self):
+		return "states: %s\nactions: %s\nnext_states: %s"%(str(np.shape(self.states)),str(np.shape(self.actions)),str(np.shape(self.next_states)))
 
+	def sample(self, n):
+		# returns the newest data concatenated with n samples of the old data
 
-	def resample(self, fraction):
-		self.states = self.states[np.random.rand(np.shape(self.states)[0])<fraction,:]
+		sample_states = sample_actions = sample_next_states = None
+		if n > self.states.shape[0]:
+			sample_states = self.states
+			sample_actions = self.actions
+			sample_next_states = self.next_states
+		else:
+			sample_states = self.states[np.random.choice(self.states.shape[0], n, replace=False), :]
+			sample_actions = self.actions[np.random.choice(self.actions.shape[0], n, replace=False)]
+			sample_next_states = self.next_states[np.random.choice(self.next_states.shape[0], n, replace=False), :]
+		return (np.concatenate((sample_states,self.newest_states), axis=0), 
+			np.concatenate((sample_actions,self.newest_actions), axis=0),
+			np.concatenate((sample_next_states, self.newest_next_states), axis=0))
 
-print Memory(11).states
 
 
 ######################
@@ -57,39 +67,46 @@ print Memory(11).states
 ######################
 
 def makeModel():
+	reg = 1e-13
 	model = Sequential([
-	Dense(26, input_shape=(11,)),
+	Dense(2, input_shape=(11,), kernel_regularizer=regularizers.l2(reg)),
 	Activation('relu'),
-	Dense(26),
+	Dense(2, kernel_regularizer=regularizers.l2(reg)),
 	Activation('relu'),
-	Dense(2)
+	Dense(2, kernel_regularizer=regularizers.l2(reg))
 	])
 
-	sgd = optimizers.SGD(lr=1e-8, decay=1e-6, momentum=0.9, nesterov=True)
+	sgd = optimizers.SGD(lr=1e-1, decay=1e-6, momentum=0.9, nesterov=True)
+	adam = optimizers.adam(lr=1e-1)
 	model.compile(loss="mean_squared_error", optimizer=sgd)
 	return model
 
 model = makeModel()
 
-states = np.array([])
-next_states = np.array([])
-actions = np.array([])
+
+#model = load_model('1513466579.model')
+#model.optimizer.lr.assign(1e-7)
+
 command_queue = Queue.Queue()
 
 
 avg = np.array([0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.])
-var = np.array([0.5, 1./50., 2., 1./50., 2.0, 1./50., 2048., 2048., 2048., 2048., 2048.])
+var = np.array([0.5, 1./50., 2., 1./5., 2.0, 1./5., 2048., 2048., 2048., 2048., 2048.])
 
 
-def learn(n):
+def learn(n, loss):
 
-	lookahead = 100
+	lookahead = 20
+
+	states, actions, next_states = memory.sample(1400)
 
 	for i in range(n):
 		gamma = 1.0 - 1.0 / lookahead
 		labels = relabel(np.array(actions), np.array(states), np.array(next_states), gamma = gamma)# * (1-gamma)
 
-		model.fit(np.array(states), labels, epochs=1)
+		history = model.fit(np.array(states), labels, epochs=1)
+		print K.eval(model.optimizer.iterations)
+		loss += history.history["loss"]
 '''
 def calc_norms(data):
 	#print(data.shape)
@@ -105,23 +122,26 @@ def normalize(data):
 	return (data - avg)/var
 
 def getReward(states):
-	rewards_pole = (states[:,4].reshape((-1,1)) + 0.5)**2 #ypole hieght	
-	rewards_cart = 0.1 * np.power(states[:,0].reshape((-1,1)),2) #xcart pos
+	rewards_pole = 0.0 * (states[:,4] + 0.5)**2 #ypole hieght	
+	rewards_cart = -2.0 * np.power(states[:,0],2) #xcart pos
 	return rewards_cart + rewards_pole
 
 
 def relabel(actions, states, next_states, gamma=1.0 - 1.0/20 ):
 	global left_model, right_model
 
-	print(np.shape(next_states))
 	rewards = getReward(next_states)
 
 	qs = model.predict(states)
 	next_qs = model.predict(next_states)
 	action_indices = ((actions + 1)/2).astype(int)
-
-	qs[:,action_indices] = rewards + gamma * np.max(next_qs, axis=1)
-
+	#print(qs[0:10])
+	#print(action_indices.shape)
+	#print(np.arange(qs.shape[0]).shape)
+	#print(rewards.shape)
+	#print(np.max(next_qs, axis=1).shape)
+	qs[np.arange(qs.shape[0]),action_indices] = rewards + gamma * np.max(next_qs, axis=1)
+	#print(qs[0:10])
 	return qs
 
 #####################
@@ -131,6 +151,8 @@ def relabel(actions, states, next_states, gamma=1.0 - 1.0/20 ):
 analyzer = ImageAnalyzer(1)
 
 cart = CartCommand(port="/dev/ttyACM0")
+
+memory = Memory()
 
 def test(n, random_action=False, eps=1.0):
 	global states, actions, next_states, command_queue
@@ -143,7 +165,7 @@ def test(n, random_action=False, eps=1.0):
 	current_next_states = []
 
 	command = 0
-	commandStep = 100
+	commandStep = 500
 
 	for i in range(5):
 		command_queue.put(0)
@@ -163,7 +185,6 @@ def test(n, random_action=False, eps=1.0):
 		else:
 			q = model.predict(state.reshape((1,-1)))
 
-			print q
 			action = 0
 			if q[0][0] > q[0][1]:
 				action = -1
@@ -188,7 +209,7 @@ def test(n, random_action=False, eps=1.0):
 		command_queue.get()
 
 
-
+		old_x, old_xpole, old_ypole = x, xpole, ypole
 
 		key = cv2.waitKey(1)
 		if key & 0xFF == 32:
@@ -200,35 +221,16 @@ def test(n, random_action=False, eps=1.0):
 		elif key & 0xFF == ord('r'):
 			print("reset")
 			reset()
+	throwaway = 5
+	current_next_states = np.array(current_states[throwaway+1:])
+	current_states = np.array(current_states[throwaway:-1])
+	current_actions = np.array(current_actions[throwaway:-1])
 
-	current_next_states = np.array(current_states[1:])
-	current_states = np.array(current_states[0:-1])
-	current_actions = np.array(current_actions[0:-1])
-
-	print np.shape(states)
-	if np.shape(states)[0] > 0:
-		states = states[np.random.rand(np.shape(states)[0])<0.8,:]
-		states = np.append(states, np.array(current_states),axis=0)
-	else:
-		states = current_states
-
-	if np.shape(actions)[0] > 0:
-		actions = actions[np.random.rand(np.shape(actions)[0])<0.8]
-		actions = np.append(actions, np.array(current_actions),axis=0)
-	else:
-		actions = current_actions
-
-
-	if np.shape(next_states)[0] > 0:
-		next_states = next_states[np.random.rand(np.shape(next_states)[0])<0.8,:]
-		next_states = np.append(next_states, np.array(current_next_states),axis=0)
-	else:
-		next_states = current_next_states
+	memory.add(current_states, current_actions, current_next_states)
 
 	resetCart()
 	cart.setSpeed(0)
-	print np.shape(next_states)
-	return np.sum(getReward(current_next_states))
+	return current_states, np.sum(getReward(current_next_states))
 
 
 def resetCart():	
@@ -255,13 +257,40 @@ def getData():
 
 
 fig = plt.figure("reward")
+fig2 = plt.figure("state")
+fig3 = plt.figure("loss")
+fig4 = plt.figure("weights")
+
 plt.ion()
 plt.show()
 test_rewards = []
-test_rewards.append(test(100, random_action=True))
+loss = []
+test_rewards.append(test(100, random_action=True)[1])
+file_name = "%d.model"%int(time())
 for i in range(100):
-	learn(30)
-	test_rewards.append(test(300, eps= 0.2 + 2.0/(i+1)))
+	learn(100, loss)
+	states, reward = test(600, eps= 0.2 + 2.0/(i+1))
+	test_rewards.append(reward)
+
 	fig.clear()
+	fig2.clear()
+	fig3.clear()
+	fig4.clear()
+	plt.figure("reward")
 	plt.plot(test_rewards)
+	plt.figure("state")
+	for j in range(states.shape[1]):
+		plt.plot(states[:,j], label=str(j))
+	plt.legend()
+
+	plt.figure("loss")
+	plt.plot(loss)
+
+	plt.figure("weights")
+	print model.get_weights()
+	plt.hist(np.concatenate([layer.flatten() for layer in model.get_weights()]))
+	plt.yscale('log', nonposy='clip')
+
+
 	plt.pause(.0001)
+	model.save(file_name,"w")

@@ -4,7 +4,7 @@ import pickle
 from time import time
 
 class ImageAnalyzer():
-	def __init__(self):
+	def __init__(self, video_device):
 		self.top = self.bot = (0,0)
 		self.left = self.right = None
 		self.old_x = self.old_theta = 0
@@ -38,7 +38,7 @@ class ImageAnalyzer():
 		cv2.createTrackbar('bot','controls',0,180,nothing)
 		cv2.setTrackbarPos('bot', 'controls', settings["h_bot"])
 
-		self.cap = cv2.VideoCapture(1)
+		self.cap = cv2.VideoCapture(video_device)
 		#self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, 480)
 		#self.cap.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, 640)
 		self.cap.set(cv2.cv.CV_CAP_PROP_FPS, 125)
@@ -157,7 +157,7 @@ class ImageAnalyzer():
 		theta = np.arctan2(pole[1],pole[0])
 		dtheta = theta-self.old_theta
 		self.old_theta = theta
-		print("framerate %f fps"%(1./(time()-start)))
+		#print("framerate %f fps"%(1./(time()-start)))
 		return x, dx, theta, dtheta
 
 def nothing(a):

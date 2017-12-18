@@ -9,7 +9,7 @@ import Queue
 old_data = []
 data = []
 
-analyzer = ImageAnalyzer()
+analyzer = ImageAnalyzer(1)
 
 cart = CartCommand("/dev/ttyACM0")
 
