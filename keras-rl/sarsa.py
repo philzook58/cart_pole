@@ -8,7 +8,7 @@ from keras.optimizers import Adam
 from rl.agents import SARSAAgent
 from rl.policy import BoltzmannQPolicy
 
-from custom_cartpole import CartPoleEnv
+from custom_cartpole_xy import CartPoleEnv
 
 ENV_NAME = 'CartPole-v0'
 

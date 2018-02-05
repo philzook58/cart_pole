@@ -8,7 +8,7 @@ from keras.optimizers import Adam
 from rl.agents.dqn import DQNAgent
 from rl.policy import BoltzmannQPolicy
 from rl.memory import SequentialMemory
-from custom_cartpole_xy import CartPoleEnv
+from custom_cartpole_xy_delay import CartPoleEnv
 
 ENV_NAME = 'CartPole-v0'
 
@@ -37,16 +37,21 @@ print(model.summary())
 memory = SequentialMemory(limit=50000, window_length=1)
 policy = BoltzmannQPolicy()
 dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=10,
-               target_model_update=1e-2, policy=policy, enable_dueling_network=True, dueling_type='avg')
+               target_model_update=1e-2, policy=policy)
 #dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 # Okay, now it's time to learn something! We visualize the training here for show, but this
 # slows down training quite a lot. You can always safely abort the training prematurely using
 # Ctrl + C.
-dqn.fit(env, nb_steps=50000, visualize=False, verbose=2)
-
+dqn.load_weights('dqn_{}_weights.h5f'.format(ENV_NAME))
+env.buffer_size = 1
+dqn.fit(env, nb_steps=10000, visualize=False, verbose=2)
+env.buffer_size = 2
+dqn.fit(env, nb_steps=10000, visualize=False, verbose=2)
+env.buffer_size = 3
+dqn.fit(env, nb_steps=10000, visualize=False, verbose=2)
 # After training is done, we save the final weights.
-dqn.save_weights('dqn_{}_weights.h5f'.format(ENV_NAME), overwrite=True)
+
 
 # Finally, evaluate our algorithm for 5 episodes.
 dqn.test(env, nb_episodes=5, visualize=True)

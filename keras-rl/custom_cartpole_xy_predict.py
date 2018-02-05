@@ -166,7 +166,7 @@ class CartPoleEnv(gym.Env):
         print(obs)
         return obs #np.array(self.state)
  
-    def _render(self, mode='human', close=False):
+    def _render(self, pangle = 0, angle=0, mode='human', close=False):
         if close:
             if self.viewer is not None:
                 self.viewer.close()
@@ -200,6 +200,23 @@ class CartPoleEnv(gym.Env):
             pole.add_attr(self.poletrans)
             pole.add_attr(self.carttrans)
             self.viewer.add_geom(pole)
+
+            pole2 = rendering.FilledPolygon([(l,b), (l,t), (r,t), (r,b)])
+            pole2.set_color(.2,.2,.9)
+            self.poletrans2 = rendering.Transform(translation=(0, axleoffset))
+            pole2.add_attr(self.poletrans2)
+            pole2.add_attr(self.carttrans)
+            self.viewer.add_geom(pole2)
+
+            pole3 = rendering.FilledPolygon([(l,b), (l,t), (r,t), (r,b)])
+            pole3.set_color(.9,.2,.2)
+            self.poletrans3 = rendering.Transform(translation=(0, axleoffset))
+            pole3.add_attr(self.poletrans3)
+            pole3.add_attr(self.carttrans)
+            self.viewer.add_geom(pole3)
+
+            
+            
             self.axle = rendering.make_circle(polewidth/2)
             self.axle.add_attr(self.poletrans)
             self.axle.add_attr(self.carttrans)
@@ -215,6 +232,8 @@ class CartPoleEnv(gym.Env):
         cartx = x[0]*scale+screen_width/2.0 # MIDDLE OF CART
         self.carttrans.set_translation(cartx, carty)
         self.poletrans.set_rotation(-x[2])
+        self.poletrans2.set_rotation(pangle)
+        self.poletrans3.set_rotation(angle)
  
         return self.viewer.render(return_rgb_array = mode=='rgb_array')
  

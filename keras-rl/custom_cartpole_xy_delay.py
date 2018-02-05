@@ -26,15 +26,20 @@ class CartPoleEnv(gym.Env):
         # we expect full swings
         self.theta_threshold_radians =  np.pi  #12 * 2 * math.pi / 360
         self.x_threshold = 2.4
+        self.buffer = []
+        self.action_buffer = []
+        self.buffer_size = 2
  
         # Angle limit set to 2 * theta_threshold_radians so failing observation is still within bounds
         high = np.array([
             self.x_threshold * 2,
             np.finfo(np.float32).max,
             self.theta_threshold_radians * 2,
+            2,
             np.finfo(np.float32).max])
+        high = 4 * np.ones(2+3)#+ self.buffer_size)
         high2 = np.array([1])
-        self.action_space = spaces.Box(-high2, high2)#spaces.Discrete(2) ## 
+        self.action_space = spaces.Discrete(2) #spaces.Box(-high2, high2)# 
         self.observation_space = spaces.Box(-high, high)
  
         self._seed()
@@ -49,18 +54,29 @@ class CartPoleEnv(gym.Env):
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
+
+    def _step(self,action):
+        for i in range(1):
+            obs, rew, done, info = self._step2(action)
+        return obs, rew, done, info
+
  
-    def _step(self, action):
+    def _step2(self, action):
         #assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
         #print(action)
         #action =action[0] # max(-1, min(action[0],1))
         state = self.state
         x, x_dot, theta, theta_dot = state
         force = self.force_mag if action==1 else -self.force_mag
-        force = self.force_mag * action
+        #force = self.force_mag * action
         #print(action)
         #print(state)
- 
+        '''
+        if x < -self.x_threshold:
+            force  = self.force_mag
+        elif x > self.x_threshold:
+            force  = -self.force_mag
+        '''
         x  = x + self.tau * x_dot
         theta = theta + self.tau * theta_dot
         costheta = math.cos(theta)
@@ -72,24 +88,36 @@ class CartPoleEnv(gym.Env):
         x_dot = x_dot + self.tau * xacc
         
         theta_dot = theta_dot + self.tau * thetaacc
+
+
+
         self.state = (x,x_dot,theta,theta_dot)
         
         done =  x < -self.x_threshold \
-                or x > self.x_threshold \
-                or theta < -np.pi * 2 \
-                or theta > np.pi * 4 \
+                or x >  self.x_threshold \
+                or theta < -np.pi * 5 \
+                or theta > np.pi * 5 \
                 or self.steps > 1024
         done = bool(done)
+
+
         
         self.steps += 1
         limit = 200
+
+        ypole = np.cos(theta)
+
  
         reward = 0.0
-        if  x < -self.x_threshold or x > self.x_threshold:
-            reward -= 1.0
-        reward += (np.cos(theta)+1)**2
+
+        reward += (ypole+1)**2 / 4 #+ np.abs(ypole+1)/2
         #reward -= 0.1 * action**2 
-        reward += - 0.1 * x**2 + 0.2
+        reward += -0.2 * x**2 + 0.2
+        if ypole > 0.95:
+            reward += 1
+        #don't touch those walls
+        #if x < -self.x_threshold or x > self.x_threshold:
+        #    reward -= 1
         #reward = reward/2048
         '''
         if not done:
@@ -105,15 +133,38 @@ class CartPoleEnv(gym.Env):
             reward = 0.0
         '''
         #print(np.array(self.state).reshape((1,-1)), reward, done, {})
-        return np.array(self.state), reward, done, {}
+
+        #This makes the reward accurate
+        obs = np.array([x,x_dot,np.cos(theta),np.sin(theta),theta_dot])# + self.action_buffer)
+        self.buffer.append(obs)
+        self.action_buffer.append(action-0.5)
+        self.action_buffer.pop(0)
+        obs2 = self.buffer.pop(0)
+        #obs2 = obs2/2
+        x = obs[0]
+        ypole = obs[2]
+        #print("buffer", self.buffer)
+        #print("obs, ", obs)
+
+        return obs2, reward, done, {}
  
     def _reset(self):
         #self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         #x, xdot, theta, thetadot
+        self.action_buffer = []
+        self.buffer = []
         self.state = np.array([0, 0, np.pi, 0]) + self.np_random.uniform(low=-1.0, high=1.0, size=(4,))
         self.steps_beyond_done = None
         self.steps = 0
-        return np.array(self.state)
+        x, x_dot, theta, theta_dot = self.state
+
+        for i in range(self.buffer_size):
+            self.action_buffer.append(0)
+        obs = np.array([x,x_dot,np.cos(theta),np.sin(theta),theta_dot])# + self.action_buffer)
+        for i in range(self.buffer_size):
+            self.buffer.append(obs)
+        print(obs)
+        return obs #np.array(self.state)
  
     def _render(self, mode='human', close=False):
         if close:

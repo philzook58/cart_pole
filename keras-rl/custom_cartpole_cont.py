@@ -39,7 +39,7 @@ class CartPoleEnv(gym.Env):
             np.finfo(np.float32).max])
         high = 4 * np.ones(2+3)#+ self.buffer_size)
         high2 = np.array([1])
-        self.action_space = spaces.Discrete(2) #spaces.Box(-high2, high2)# 
+        self.action_space = spaces.Box(-high2, high2) #spaces.Discrete(2) # 
         self.observation_space = spaces.Box(-high, high)
  
         self._seed()
@@ -64,11 +64,12 @@ class CartPoleEnv(gym.Env):
     def _step2(self, action):
         #assert self.action_space.contains(action), "%r (%s) invalid"%(action, type(action))
         #print(action)
-        #action =action[0] # max(-1, min(action[0],1))
+        action =  max(-1, min(action[0],1)) #action[0] 
+        print("action: ", action)
         state = self.state
         x, x_dot, theta, theta_dot = state
-        force = self.force_mag if action==1 else -self.force_mag
-        #force = self.force_mag * action
+        #force = self.force_mag if action==1 else -self.force_mag
+        force = self.force_mag * action
         #print(action)
         #print(state)
         '''
