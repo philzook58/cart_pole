@@ -179,6 +179,8 @@ def test(n, random_action=False, eps=1.0):
 		x, xpole, ypole = getData()
 		state = normalize(np.array([x, x-old_x, xpole, xpole-old_xpole, ypole, ypole-old_ypole] + list(command_queue.queue)))
 
+		print state
+
 
 		if np.random.rand() < eps or random_action:
 			action = (2*np.random.randint(2) - 1)
