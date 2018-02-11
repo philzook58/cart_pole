@@ -91,7 +91,7 @@ class ImageAnalyzer():
 		h_bot = cv2.getTrackbarPos('bot','controls')
 		pickle.dump({"h_top":h_top,"h_bot":h_bot}, open("settings.p","w"))
 
-	def analyzeFrame(self):
+	def analyzeFrame(self, prediction = None):
 		start = time()
 		ret, frame = self.cap.read()
 
@@ -118,6 +118,10 @@ class ImageAnalyzer():
 		cv2.imshow('frame',frame)
 		cv2.imshow('mask top', mask_top)
 		cv2.imshow('mask bot', mask_bot)
+
+		if not prediction is None:
+			print prediction
+			cv2.line(frame, (prediction[0],0), (prediction[2], prediction[4]),(255,255,255),5)
 
 		# re-center coordinates at left base point
 		l = np.array(self.left)
