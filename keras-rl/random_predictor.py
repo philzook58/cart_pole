@@ -51,13 +51,20 @@ def predictor_data():
            #env._render(angle=np.arctan2(pob[2]+ob[2], pob[3]+ob[3]))
             if done:
                 break
-    inobs = [np.array(obs1[delay:]) for obs1 in obs]
+    #inobs = [np.array(obs1[delay:]) for obs1 in obs]
     
-    inobs = np.vstack(inobs).reshape((-1,1,5))
-    outobs = np.vstack([ np.array(obs1[:-delay])  for obs1 in obs]).reshape((-1,1,5))
-    print(inobs)
-    diffobs = outobs - inobs
-    return inobs, diffobs
+    #inobs = np.vstack(inobs).reshape((-1,1,5))
+    #outobs = np.vstack([ np.array(obs1[:-delay])  for obs1 in obs]).reshape((-1,1,5))
+    #print(inobs)
+    #diffobs = outobs - inobs
+    #return inobs, diffobs
+    actualobs = [np.array(obs1[delay:]) for obs1 in obs]
+    
+    actualobs = np.vstack(actualobs).reshape((-1,1,5))
+    delayedobs = np.vstack([ np.array(obs1[:-delay])  for obs1 in obs]).reshape((-1,1,5))
+    #print(inobs)
+    diffobs = actualobs - delayedobs
+    return delayedobs, diffobs
 def show():
         ob = env.reset()
         pobs = []
@@ -75,7 +82,7 @@ def show():
             pobs.append(pob)
             pob = pobs.pop(0)
             oldob = obs.pop(0)
-            env._render(angle=-1 * np.arctan2(oldob[3], oldob[2]), pangle=-1 * np.arctan2(-pob[3]+oldob[3], -pob[2]+oldob[2]))
+            env._render(angle=-1 * np.arctan2(oldob[3], oldob[2]), pangle=-1 * np.arctan2(pob[3]+oldob[3], pob[2]+oldob[2]))
             if done:
                 break
 
