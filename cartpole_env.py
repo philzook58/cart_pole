@@ -8,22 +8,22 @@ from sabretooth_command import CartCommand
 from image_analyzer_pseye import ImageAnalyzer
 import cv2
 
+from time import sleep
+
+
+
 logger = logging.getLogger(__name__)
 
 class CartPoleEnv(gym.Env):
-    metadata = {
-        'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second' : 50
-    }
 
-    def __init__(self, cartport, imageport):
-        self.port = port
+    def __init__(self, cartport="/dev/ttyACM0", imageport=1):
         self.analyzer = ImageAnalyzer(imageport)
         self.cart = CartCommand(port=cartport)
 
         self.action_space = spaces.Discrete(2)
         self.observation_space = spaces.Box(np.array([0.,-50.,0.,-50.,-1.,-50.]), np.array([1.,50.,1.,50.,1.,50.]))
 
+        self.last_state = None
         self.state = self._getState()
         self.last_state = self._getState()
 
@@ -54,7 +54,7 @@ class CartPoleEnv(gym.Env):
 
     def _reset(self):
         x, dx, theta, dtheta = self.analyzer.analyzeFrame()
-        cart.enabled = True
+        self.cart.enabled = True
         while not 0.4 < x < 0.6:
             x, dx, theta, dtheta = self.analyzer.analyzeFrame()
 
@@ -74,10 +74,10 @@ class CartPoleEnv(gym.Env):
         ypole = np.sin(theta)
         return x, xpole, ypole
 
-    def _getState():
-        x, xpole, ypole = self._getData
-        if not old_state is None:
-            state = [x, x-old_state[0], xpole, xpole - old_state[2], ypole, ypole - old_state[4]]
+    def _getState(self):
+        x, xpole, ypole = self._getData()
+        if not self.last_state is None:
+            state = [x, x-self.last_state[0], xpole, xpole - self.last_state[2], ypole, ypole - self.last_state[4]]
         else: 
             state = [x, 0, xpole, 0, ypole, 0]
         return state

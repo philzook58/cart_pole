@@ -7,6 +7,9 @@ class CartCommand():
 	def __init__(self, port='/dev/ttyACM0'):
 		self.ser = serial.Serial(port, 115200)  # open serial port
 		self.enabled = False
+
+
+
 		self.setSpeed(0)
 	def __del__(self):
 		self.setSpeed(0)

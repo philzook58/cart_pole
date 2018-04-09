@@ -31,8 +31,10 @@ def makeModel():
 	return model
 
 def trainModel(model, states, delay):
-	labels = states[delay:]
+	states_delayed = states[delay:]
 	states = states[:-delay]
+	states_delayed_diff = states_delayed - states
+	labels = states_delayed_diff[]
 	model.fit(states, labels, epochs=1)
 
 def moveRandom(n):
