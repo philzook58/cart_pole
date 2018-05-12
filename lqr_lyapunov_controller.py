@@ -24,15 +24,23 @@ print("Initilizing Analyzer")
 analyzer = EncoderAnalyzer(port=ardPort) #"/dev/ttyACM0")
 print("Initializing Controller.")
 cart = CartController(comm, analyzer)
+time.sleep(0.5)
 print("Starting Zero Routine")
 cart.zeroAnalyzer()
 
 gravity = 9.8
-mass_pole = 0.1
+mass_pole = 0.15
 length = 0.5
-
 moment_of_inertia = (1./3.) * mass_pole * length**2
-print(moment_of_inertia)
+
+def E(x): # energy
+	return (moment_of_inertia * x[3]**2 / 2) - (np.cos(x[2]) * length * mass_pole * gravity / 2)
+
+
+Ed = E([0,0,np.pi,0])
+
+def u(x):
+	return  1.0 * (E(x)-Ed) * x[3] * np.cos(x[2])
 
 A = np.array([
     [0,1,0,0],
@@ -41,7 +49,7 @@ A = np.array([
     [0,0,length * mass_pole * gravity / (2 * moment_of_inertia) ,0]
 	])
 B = np.array([0,1,0,length * mass_pole / (2 * moment_of_inertia)]).reshape((4,1))
-Q = np.diag([1.0, 1.0, 1.0, 0.01])
+Q = np.diag([4.0, 1.0, 1.0, 0.01])
 R = np.array([[0.001]])
 
 P = lqr(A,B,Q,R)
@@ -57,14 +65,27 @@ cart.goTo(500)
 command_speed = 0
 last_time = time.time()
 while True:
-	observation = cart.analyzer.getState()
-	x,x_dot,theta,theta_dot = observation
-	a = ulqr(np.array([(x-500)/1000,x_dot/1000,theta-0.01,theta_dot]))
+	x,x_dot,theta,theta_dot = cart.analyzer.getState()
+	observation = np.array([(x-500)/1000.,x_dot/1000.,theta,theta_dot])
+
+	if not 100 < x < 800:
+		cart.goTo(500)
+		cart.setSpeedMmPerS(0)
+		command_speed = 0
+		last_time = time.time()
+
+		#break
+
+	if  abs(E(observation)-Ed) < 0.05 and np.cos(observation[2]) < -0.9 and abs(command_speed)<4: # balance
+		print("linear control")
+		a = 1.0 * ulqr(observation)[0]
+	else:
+		a = 0.5*(u(observation)/0.15 - 10.0 * observation[0] -  1.0 * observation[1]) # swing up
+
 	t = time.time() 
 	dt = t - last_time
 	last_time = t
-	command_speed += 1 * a[0] * dt
-	#command_speed -= (x - 500) * dt * 0.001 * 0.1
-	#command_speed -= x_dot * dt * 0.001 * 0.5
+	command_speed += 1 * a * dt
+
 	cart.setSpeedMmPerS(1000 *command_speed)
-	print("theta {}\ttheta_dot {}\taction {}\tspeed {}".format(theta, theta_dot, a, command_speed))
+	print("theta %06.2f\ttheta_dot %06.2f\taction %06.2f\tspeed %06.2f" % (theta, theta_dot, a, command_speed))

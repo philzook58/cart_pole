@@ -24,6 +24,7 @@ print("Initilizing Analyzer")
 analyzer = EncoderAnalyzer(port=ardPort) #"/dev/ttyACM0")
 print("Initializing Controller.")
 cart = CartController(comm, analyzer)
+time.sleep(0.5)
 print("Starting Zero Routine")
 cart.zeroAnalyzer()
 
@@ -59,7 +60,17 @@ last_time = time.time()
 while True:
 	observation = cart.analyzer.getState()
 	x,x_dot,theta,theta_dot = observation
-	a = ulqr(np.array([(x-500)/1000,x_dot/1000,theta-0.01,theta_dot]))
+	#if np.cos(theta) > -0.75:
+	#	cart.goTo(500)
+	#	cart.setSpeedMmPerS(0)
+	#	continue
+
+	if not 100 < x < 800:
+		cart.goTo(500)
+		cart.setSpeedMmPerS(0)
+		continue
+
+	a = ulqr(np.array([(x-500)/1000,x_dot/1000,theta,theta_dot]))
 	t = time.time() 
 	dt = t - last_time
 	last_time = t
