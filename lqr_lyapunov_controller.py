@@ -80,7 +80,7 @@ while True:
 		print("linear control")
 		a = 1.0 * ulqr(observation)[0]
 	else:
-		a = 0.5*(u(observation)/0.15 - 10.0 * observation[0] -  1.0 * observation[1]) # swing up
+		a = 0.75*(u(observation)/0.15 - 10.0 * observation[0] -  1.0 * observation[1]) # swing up
 
 	t = time.time() 
 	dt = t - last_time
