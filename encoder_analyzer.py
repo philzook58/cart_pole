@@ -11,7 +11,7 @@ motor_mm_s = 2046. / 1000. # motor moves roughly 1m/s at full tilt?
 
 class EncoderAnalyzer():
 	def __init__(self, port='/dev/ttyACM0'):
-		self.ser = serial.Serial(port, 115200, timeout=1, parity=serial.PARITY_EVEN, stopbits=serial.STOPBITS_ONE)  
+		self.ser = serial.Serial(port, 500000, timeout=1, parity=serial.PARITY_EVEN, stopbits=serial.STOPBITS_ONE)  
 		print("Initialized Analyzer Serial")
 		self.ser.flushInput()
 		self.cart_position = 0
