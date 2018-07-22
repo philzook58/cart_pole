@@ -11,7 +11,7 @@ long encoder_1_change = 0;
 long encoder_2 = 0;
 
 void setup() {
-Serial.begin(500000, SERIAL_8E1);
+Serial.begin(115200, SERIAL_8E1);
 pinMode(encoder_1i, INPUT_PULLUP);
 pinMode(encoder_2i, INPUT_PULLUP);
 pinMode(encoder_1b, INPUT_PULLUP);

@@ -1,3 +1,6 @@
+from sabretooth_command import CartCommand
+from cart_controller import CartController
+from encoder_analyzer import EncoderAnalyzer
 import time
 import numpy as np
 import serial.tools.list_ports
@@ -5,30 +8,25 @@ import scipy.linalg as linalg
 lqr = linalg.solve_continuous_are
 
 
-
-from analyzer import EncoderAnalyzer, ImageAnalyzer
-from motor_control import SabreControl
-from cart_pole import CartPole
-import serial.tools.list_ports
-
 ports = list(serial.tools.list_ports.comports())
-print(ports)
+print(dir(ports))
 for p in ports:
-    print(p)
-    if p[2] == "USB VID:PID=268b:0201 SNR=160045F45953":
-       sabre_port = p[0]
-    elif p[2] == "USB VID:PID=2341:0043 SNR=75334323935351D0D022":
-       ard_port = p[0]
+    print(dir(p))
+    print(p.device)
+    if "Sabertooth" in p.description:
+       sabreport = p.device
+    else:
+       ardPort = p.device
 
-motor = SabreControl(port=sabre_port)
-encoder = EncoderAnalyzer(port=ard_port)
-image = ImageAnalyzer(0,show_image=True)
-cart = CartPole(motor, encoder, image, encoder)
-
-cart.zeroAngleAnalyzer()
-#encoder.setAngleZero()
-cart.zeroPosAnalyzer()
-cart.goTo(.5)
+print("Initilizing Commander")
+comm = CartCommand(port= sabreport) #"/dev/ttyACM1")
+print("Initilizing Analyzer")
+analyzer = EncoderAnalyzer(port=ardPort) #"/dev/ttyACM0")
+print("Initializing Controller.")
+cart = CartController(comm, analyzer)
+time.sleep(0.5)
+print("Starting Zero Routine")
+cart.zeroAnalyzer()
 
 gravity = 9.8
 mass_pole = 0.1
@@ -56,29 +54,28 @@ def ulqr(x):
 	x1[2] = np.sin(x1[2] + np.pi)
 	return -np.dot(K, x1)
 
+cart.goTo(500)
 command_speed = 0
 last_time = time.time()
 while True:
-	observation = cart.getState()
+	observation = cart.analyzer.getState()
 	x,x_dot,theta,theta_dot = observation
 	#if np.cos(theta) > -0.75:
 	#	cart.goTo(500)
 	#	cart.setSpeedMmPerS(0)
 	#	continue
-	print('obs',observation)
+
 	if not 100 < x < 800:
-		cart.goTo(.5)
+		cart.goTo(500)
 		cart.setSpeedMmPerS(0)
-		last_time = time.time()
-		command_speed = 0
 		continue
 
-	a = ulqr(np.array([(x-400)/1000,x_dot/1000,theta,theta_dot]))
+	a = ulqr(np.array([(x-500)/1000,x_dot/1000,theta,theta_dot]))
 	t = time.time() 
 	dt = t - last_time
 	last_time = t
-	command_speed += 1. * a[0] * dt
+	command_speed += 1 * a[0] * dt
 	#command_speed -= (x - 500) * dt * 0.001 * 0.1
 	#command_speed -= x_dot * dt * 0.001 * 0.5
-	cart.setSpeedMmPerS(1000 * command_speed)
-	#print("theta {}\ttheta_dot {}\taction {}\tspeed {}".format(theta, theta_dot, a, command_speed))
+	cart.setSpeedMmPerS(1000 *command_speed)
+	print("theta {}\ttheta_dot {}\taction {}\tspeed {}".format(theta, theta_dot, a, command_speed))
