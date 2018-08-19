@@ -23,14 +23,14 @@ for p in ports:
 motor = SabreControl(port=sabre_port)
 encoder = EncoderAnalyzer(port=ard_port)
 image = ImageAnalyzer(0,show_image=True)
-cart = CartPole(motor, encoder, encoder, encoder)
+cart = CartPole(motor, encoder, image, encoder)
 
 cart.zeroAngleAnalyzer()
 #encoder.setAngleZero()
 cart.zeroPosAnalyzer()
 cart.goTo(.5)
 
-gravity = 9.8
+gravity = 9.81
 mass_pole = 0.15
 length = 0.5
 moment_of_inertia = (1./3.) * mass_pole * length**2
@@ -42,7 +42,7 @@ def E(x): # energy
 Ed = E([0,0,np.pi,0])
 
 def u(x):
-	return  1.0 * (E(x)-Ed) * x[3] * np.cos(x[2])
+	return  1.0 * (E(x)-Ed-0.3) * x[3] * np.cos(x[2])
 
 A = np.array([
     [0,1,0,0],
@@ -67,8 +67,8 @@ command_speed = 0
 last_time = time.time()
 while True:
 	x,x_dot,theta,theta_dot = cart.getState()
-	observation = np.array([(x-500)/1000.,x_dot/1000.,theta,theta_dot])
-
+	observation = np.array([(x-400)/1000.,x_dot/1000.,theta,theta_dot])
+	print('obs', observation)
 	if not 100 < x < 800:
 		cart.goTo(.5)
 		cart.setSpeedMmPerS(0)
@@ -81,7 +81,7 @@ while True:
 		print("linear control")
 		a = 1.0 * ulqr(observation)[0]
 	else:
-		a = 1.0*(u(observation)/0.15 - 20.0 * observation[0] -  1.0 * observation[1]) # swing up
+		a = 0.5*(u(observation)/0.15 - 10.0 * observation[0] -  1.0 * observation[1]) # swing up
 
 	t = time.time() 
 	dt = t - last_time
@@ -89,4 +89,4 @@ while True:
 	command_speed += 1 * a * dt
 
 	cart.setSpeedMmPerS(1000 *command_speed)
-	print("theta %06.2f\ttheta_dot %06.2f\taction %06.2f\tspeed %06.2f" % (theta, theta_dot, a, command_speed))
+	p#rint("theta %06.2f\ttheta_dot %06.2f\taction %06.2f\tspeed %06.2f" % (theta, theta_dot, a, command_speed))
