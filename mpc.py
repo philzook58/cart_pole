@@ -6,27 +6,29 @@ import scipy.sparse as sparse
 
 class MPC():
 	def __init__(self, x0, v0, theta0, thetadot0):
-		self.N = 1000
+		self.N = 50
 		self.NVars  = 5
-		T = 5.0
+		T = 2.0
 		dt = T/self.N
 		self.dtinv = 1./dt
 		#Px = sparse.eye(N)
 		#sparse.csc_matrix((N, N)) 
 		# The three deifferent weigthing matrices for x, v, and external force
-		reg = sparse.eye(self.N)*0.01
+		reg = sparse.eye(self.N)*0.05
+		z = sparse.bsr_matrix((self.N, self.N))
 		# sparse.diags(np.arange(N)/N)
-		P = sparse.block_diag([reg,reg ,sparse.eye(self.N), 1*reg,1*reg])
+		P = sparse.block_diag([reg,reg ,sparse.eye(self.N), reg, reg]) #1*reg,1*reg])
 		#P[N,N]=10
 		THETA = 2
 		q = np.zeros((self.NVars, self.N))
 		q[THETA,:] = np.pi
+		q[0,:] = 0.5
 		#q[N,0] = -2 * 0.5 * 10
 		q = q.flatten()
 		q= -P@q
 		#u = np.arr
 
-		x = np.random.randn(self.N,self.NVars).flatten()
+		self.x = np.random.randn(self.N,self.NVars).flatten()
 		#x = np.zeros((N,NVars)).flatten()
 		#v = np.zeros(N)
 		#f = np.zeros(N)
@@ -37,9 +39,9 @@ class MPC():
 
 
 
-		A, l, u = self.getAlu(x, x0, v0, theta0, thetadot0)
+		A, l, u = self.getAlu(self.x, x0, v0, theta0, thetadot0)
 		self.m = osqp.OSQP()
-		self.m.setup(P=P, q=q, A=A, l=l, u=u) #  **settings
+		self.m.setup(P=P, q=q, A=A, l=l, u=u , time_limit=0.1) #  **settings # warm_start=False, eps_prim_inf=1e-1
 		self.results = self.m.solve()
 		print(self.results.x)
 		for i in range(100):
@@ -47,12 +49,17 @@ class MPC():
 
 
 	def update(self, x0, v0,theta0, thetadot0):
-		A, l, u = self.getAlu(self.results.x, x0, v0, theta0, thetadot0)
-		print(A.shape)
+		A, l, u = self.getAlu(self.x, x0, v0, theta0, thetadot0)
+		#print(A.shape)
 		#print(len(A))
 		self.m.update(Ax=A.data, l=l, u=u)
 		self.results = self.m.solve()
-		return self.results.x[4*self.N+1]
+		if self.results.x[0] is not None:
+			self.x = np.copy(self.results.x)
+		else:
+			self.x += np.random.randn(self.N*self.NVars)*0.1 # help get out of a rut?
+			return 0
+		return self.x[4*self.N+1]
 
 
 
@@ -78,7 +85,7 @@ class MPC():
 		dx, dv, dthet, dthdot = map(lambda z: (z[1:]-z[0:-1])*dtinv, dynvars)
 		vres = dv - a[1:]
 		xres = dx - vavg
-		torque = -gL*np.sin(thetavg) + a[1:]*L*np.cos(thetavg)
+		torque = (-gL*np.sin(thetavg) + a[1:]*L*np.cos(thetavg))/2
 		thetdotres = dthdot - torque*Iinv
 		thetres = dthet - thdotavg
 
@@ -90,11 +97,11 @@ class MPC():
 	def getAlu(self, x, x0, v0, th0, thd0):
 		N = self.N
 		gt = np.zeros((2,N))
-		gt[0,:] = 0.1 # x is greaer than 0
+		gt[0,:] = 0.15 # x is greaer than 0.15
 		gt[1,:] = -1 #veclotu is gt -1m/s
 		gt = gt.flatten()
 		lt = np.zeros((2,N))
-		lt[0,:] = 0.8
+		lt[0,:] = 0.75 # x less than 0.75
 		lt[1,:] = 1 # velocity less than 1m/s
 		lt = lt.flatten()
 
